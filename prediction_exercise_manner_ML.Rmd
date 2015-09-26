@@ -1,0 +1,130 @@
+---
+title: "Prediction of Excercise Manner by Machine Learning"
+author: "Yuan Huang"
+date: "September 26, 2015"
+output: html_document
+---
+Summary:This project compared several machine learning algorithms to predict exercise quality based on the activity data monitored by accelerometers. Results obtained by Linear Discriminant Analyisis (LDA), Random Forest (RF) and Recursive Partition and Regression Trees(RPART) were compared. Based on out of sample (OOS) errors and the errors with cross-validation, RF provides the best prediction accuracy, with an OOS error < 0.05%, and a cross-validation error <0.1%. Results based on 20 testing samples showed that the prediction model built based on RF correctly predicted the activity quality of all these samples.
+
+####Read and clean the data
+```{r echo=TRUE, cache=TRUE}
+#load the library
+library(caret)
+
+# read the data from cvs data files
+training<-read.csv("pml-training.csv")
+testing<-read.csv("pml-testing.csv")
+
+# find the data missing columns in training data, and eliminate these columns
+complevar<-sapply(training,function(x) sum(is.na(x)))
+complevarvalid<-complevar<1
+training.complete<-subset(training,select=complevarvalid)
+testing.complete<-subset(testing,select=complevarvalid)
+
+#find the data missing columns in testing data set, and elminate these columns 
+complevartesting<-sapply(testing.complete,function(x) sum(is.na(x)))
+complevarvalidtesting<-complevartesting<1
+training.complete<-subset(training.complete,select=complevarvalidtesting)
+testing.complete<-subset(testing.complete,select=complevarvalidtesting)
+
+#eliminate the X, user_name and new_window columns since these are not closely related 
+#to the activity quality
+invalid.columns=c("X","user_name","new_window")
+training.complete<-training.complete[,-which(names(training.complete) %in% invalid.columns)]
+testing.complete<-testing.complete[,-which(names(testing.complete) %in% invalid.columns)]
+
+#convert the cvtd_timstamp column to numeric, so that all the predictors in training
+# and testing data sets are numeric.
+training.complete$cvtd_timestamp<-as.numeric(training.complete$cvtd_timestamp)
+testing.complete$cvtd_timestamp<-as.numeric(testing.complete$cvtd_timestamp)
+```
+
+####separate the training set to Out Of Sample (OOS) and Training sub data set
+The 20% of the data in the original training data set will be used to estimate Out Of Sample (OOS). These samples will not be used for building prediction models, while the remaining 80% data in the original training data set will be used to build the machine learning models 
+
+```{r}
+# separate the training set to two sub data sets, 
+set.seed(233)
+OOSTest.index <- createDataPartition(y = training.complete$classe, p = 0.2, list = F)
+OOSTest.sub <- training.complete[OOSTest.index, ]
+training.sub <- training.complete[-OOSTest.index, ]
+
+#find the predictors that are closely correlated to each other based on
+#the training sub data set
+predictor.corr<-cor(training.sub[,-which(names(training.sub)=="classe")])
+highlyCor<-findCorrelation(predictor.corr,cutoff=0.75)
+
+#eliminate these highly correlated columns from training, testing and OOS testing data sets
+training.clean<-training.sub[,-highlyCor]
+testing.clean<-testing.complete[,-highlyCor]
+OOSTest.clean<-OOSTest.sub[,-highlyCor]
+
+# define the cross-validation conditions including using 5 fold CV 
+fitControl<-trainControl(method="cv",number=5, p=0.7)
+
+# fit the RF model using 5 fold CV
+if (file.exists("modelrf.rda")) {
+    load("modelrf.rda")
+  } else {
+    modelrf<-train(classe~.,data=training.clean,method="rf",trControl=fitControl)
+    save(modelrf, file="modelrf.rda")
+    }
+
+# fit the RPART model using 5 fold CV
+if (file.exists("modelrpart.rda")) {
+  load("modelrpart.rda")
+} else {
+  modelrpart<-train(classe~.,data=training.clean,method="rpart",trControl=fitControl)
+  save(modelrpart, file="modelrpart.rda")
+}
+
+# fit the LDA mode using 5 fold CV, and pca to further reduce the number of predictors
+if (file.exists("modellda.rda")) {
+  load("modellda.rda")
+} else {
+  modellda<-train(classe~.,data=training.clean,method="lda",preProcess="pca",trControl=fitControl)
+  save(modellda, file="modellda.rda")
+}
+
+```
+#### compare the modes by errors of CV and out of sampole errors
+The errors of CV of the models are shown below:
+```{r}
+modelrf
+modelrpart
+modellda
+```
+It showed that the rf model had an CV accuracy >99.89%, corresponding to a CV error of about 0.1%, while the other two model only had an CV accuracy <65%, corresponding to much larger CV errors.
+
+The out of sample (OOS) erros of these models were evaluaed by comparing the predicted and real classe types of Out Of Sample (OOS) sub data set using confusionMatrix function. This data set was not used for building the models, and therefore, provide an unbiased estimation of the OOS errors. The results are shown below:
+```{r echo=FALSE}
+library(caret)
+#OOS errors for random forest model
+confusionMatrix(OOSTest.clean$classe,predict(modelrf, OOSTest.clean))$overall
+
+#OOS errors for linear discrimanat analysis model
+confusionMatrix(OOSTest.clean$classe,predict(modellda,OOSTest.clean))$overall
+
+#OOS errors for RPART model
+confusionMatrix(OOSTest.clean$classe,predict(modelrpart,OOSTest.clean))$overall
+```
+Results showed that RF model provided a high accuracy (0.9994907), corresponding to a much lower OOS erros (<0.05%), and therefore was used for predicting the testing data set. 
+
+#### prediction for the testing data set by RF model and output the data for submission
+The test data set was predicted using the RF model thus established, and the results were output to text file for submission. Classifications for all the 20 test samples were correctly predicted.
+
+```{r}
+#predict the test sample data set
+predictionrf<-predict(modelrf$finalModel,newdata=testing.clean)
+
+#output the prediction to text file for submission
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(predictionrf)
+```
