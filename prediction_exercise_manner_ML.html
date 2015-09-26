@@ -77,6 +77,7 @@ img {
 <p>Summary:This project compared several machine learning algorithms to predict exercise quality based on the activity data monitored by accelerometers. Results obtained by Linear Discriminant Analyisis (LDA), Random Forest (RF) and Recursive Partition and Regression Trees(RPART) were compared. Based on out of sample (OOS) errors and the errors with cross-validation, RF provides the best prediction accuracy, with an OOS error &lt; 0.05%, and a cross-validation error &lt;0.1%. Results based on 20 testing samples showed that the prediction model built based on RF correctly predicted the activity quality of all these samples.</p>
 <div id="read-and-clean-the-data" class="section level4">
 <h4>Read and clean the data</h4>
+<p>In the data cleaning procedure, the columns with missing data in both training and testing data sets, were eliminated. In addition, all the predictor columns were converted to numeric.</p>
 <pre class="r"><code>#load the library
 library(caret)
 
@@ -109,7 +110,10 @@ testing.complete$cvtd_timestamp&lt;-as.numeric(testing.complete$cvtd_timestamp)<
 </div>
 <div id="separate-the-training-set-to-out-of-sample-oos-and-training-sub-data-set" class="section level4">
 <h4>separate the training set to Out Of Sample (OOS) and Training sub data set</h4>
-<p>The 20% of the data in the original training data set will be used to estimate Out Of Sample (OOS). These samples will not be used for building prediction models, while the remaining 80% data in the original training data set will be used to build the machine learning models</p>
+<p>The 20% of the data in the original training data set will be used to estimate Out Of Sample (OOS). These samples will not be used for building prediction models, while the remaining 80% data in the original training data set will be used to build the machine learning models. In addition, correlations between the predictor columns were calculated, and the highly correlated predictor columns were eliminated.</p>
+<pre class="r"><code>library(caret)</code></pre>
+<pre><code>## Loading required package: lattice
+## Loading required package: ggplot2</code></pre>
 <pre class="r"><code># separate the training set to two sub data sets, 
 set.seed(233)
 OOSTest.index &lt;- createDataPartition(y = training.complete$classe, p = 0.2, list = F)
@@ -214,24 +218,12 @@ if (file.exists(&quot;modellda.rda&quot;)) {
 <p>The out of sample (OOS) erros of these models were evaluaed by comparing the predicted and real classe types of Out Of Sample (OOS) sub data set using confusionMatrix function. This data set was not used for building the models, and therefore, provide an unbiased estimation of the OOS errors. The results are shown below:</p>
 <pre><code>## Loading required package: randomForest
 ## randomForest 4.6-10
-## Type rfNews() to see new features/changes/bug fixes.
-## 
-## Attaching package: 'randomForest'
-## 
-## The following object is masked from 'package:dplyr':
-## 
-##     combine</code></pre>
+## Type rfNews() to see new features/changes/bug fixes.</code></pre>
 <pre><code>##       Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull 
 ##      0.9994907      0.9993559      0.9981615      0.9999383      0.2841864 
 ## AccuracyPValue  McnemarPValue 
 ##      0.0000000            NaN</code></pre>
-<pre><code>## Loading required package: MASS
-## 
-## Attaching package: 'MASS'
-## 
-## The following object is masked from 'package:dplyr':
-## 
-##     select</code></pre>
+<pre><code>## Loading required package: MASS</code></pre>
 <pre><code>##       Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull 
 ##   5.296664e-01   4.042818e-01   5.139112e-01   5.453774e-01   2.971734e-01 
 ## AccuracyPValue  McnemarPValue 
