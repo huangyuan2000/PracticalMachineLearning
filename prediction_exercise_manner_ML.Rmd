@@ -7,6 +7,7 @@ output: html_document
 Summary:This project compared several machine learning algorithms to predict exercise quality based on the activity data monitored by accelerometers. Results obtained by Linear Discriminant Analyisis (LDA), Random Forest (RF) and Recursive Partition and Regression Trees(RPART) were compared. Based on out of sample (OOS) errors and the errors with cross-validation, RF provides the best prediction accuracy, with an OOS error < 0.05%, and a cross-validation error <0.1%. Results based on 20 testing samples showed that the prediction model built based on RF correctly predicted the activity quality of all these samples.
 
 ####Read and clean the data
+In the data cleaning procedure, the columns with missing data in both training and testing data sets, were eliminated. In addition, all the predictor columns were converted to numeric.
 ```{r echo=TRUE, cache=TRUE}
 #load the library
 library(caret)
@@ -40,9 +41,10 @@ testing.complete$cvtd_timestamp<-as.numeric(testing.complete$cvtd_timestamp)
 ```
 
 ####separate the training set to Out Of Sample (OOS) and Training sub data set
-The 20% of the data in the original training data set will be used to estimate Out Of Sample (OOS). These samples will not be used for building prediction models, while the remaining 80% data in the original training data set will be used to build the machine learning models 
+The 20% of the data in the original training data set will be used to estimate Out Of Sample (OOS). These samples will not be used for building prediction models, while the remaining 80% data in the original training data set will be used to build the machine learning models. In addition, correlations between the predictor columns were calculated, and the highly correlated predictor columns were eliminated.  
 
 ```{r}
+library(caret)
 # separate the training set to two sub data sets, 
 set.seed(233)
 OOSTest.index <- createDataPartition(y = training.complete$classe, p = 0.2, list = F)
